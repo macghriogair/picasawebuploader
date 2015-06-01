@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/python2
 #
 # Upload directories of videos and pictures to Picasa Web Albums
 #
@@ -26,13 +26,18 @@ import gdata
 import gdata.photos.service
 import gdata.media
 import gdata.geo
+import gdata.gauth
 import getpass
+import httplib2
 import os
 import pyexiv2
 import subprocess
 import tempfile
 import time
+import webbrowser
 
+from oauth2client.client import flow_from_clientsecrets
+from oauth2client.file import Storage
 from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTENT_TYPE, GooglePhotosException
 
 PICASA_MAX_FREE_IMAGE_DIMENSION = 2048
@@ -100,12 +105,31 @@ def InsertVideo(self, album_or_uri, video, filename_or_handle, content_type='ima
 
 gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 
-def login(email, password):
-    gd_client = gdata.photos.service.PhotosService()
-    gd_client.email = email
-    gd_client.password = password
-    gd_client.source = 'palevich-photouploader'
-    gd_client.ProgrammaticLogin()
+def OAuth2Login(client_secrets, credential_store, email):
+    scope='https://picasaweb.google.com/data/'
+    user_agent='picasawebuploader'
+
+    storage = Storage(credential_store)
+    credentials = storage.get()
+    if credentials is None or credentials.invalid:
+        flow = flow_from_clientsecrets(client_secrets, scope=scope, redirect_uri='urn:ietf:wg:oauth:2.0:oob')
+        uri = flow.step1_get_authorize_url()
+        webbrowser.open(uri)
+        code = raw_input('Enter the authentication code: ').strip()
+        credentials = flow.step2_exchange(code)
+        storage.put(credentials)
+
+    token = gdata.gauth.OAuth2Token(client_id=credentials.client_id,
+                                    client_secret=credentials.client_secret,
+                                    scope=scope,
+                                    access_token=credentials.access_token,
+                                    refresh_token=credentials.refresh_token,
+                                    user_agent=user_agent)
+    
+    gd_client = gdata.photos.service.PhotosService(source=user_agent,
+                                                   email=email,
+                                                   additional_headers={'Authorization' : 'Bearer %s' % credentials.access_token})
+
     return gd_client
 
 def protectWebAlbums(gd_client):
@@ -424,7 +448,6 @@ def upload(gd_client, localPath, album, fileName, no_resize):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Upload pictures to picasa web albums / Google+.')
     parser.add_argument('--email', help='the google account email to use (example@gmail.com)', required=True)
-    parser.add_argument('--password', help='the password (you will be promted if this is omitted)', required=False)
     parser.add_argument('--source', help='the directory to upload', required=True)
     parser.add_argument(
           '--no-resize',
@@ -440,13 +463,13 @@ if __name__ == '__main__':
         print "*** Images will be resized to 2048 pixels."
 
     email = args.email
-    password = None
-    if 'password' in args and args.password is not None:
-        password = args.password
-    else:
-        password = getpass.getpass("Enter password for " + email + ": ")
 
-    gd_client = login(email, password)
+    # options for oauth2 login
+    configdir = os.path.expanduser('~/.config/picasawebuploader')
+    client_secrets = os.path.join(configdir, 'client_secrets.json')
+    credential_store = os.path.join(configdir, 'credentials.dat')
+
+    gd_client = OAuth2Login(client_secrets, credential_store, email)
     # protectWebAlbums(gd_client)
     webAlbums = getWebAlbums(gd_client)
     localAlbums = toBaseName(findMedia(args.source))
