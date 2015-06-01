@@ -36,6 +36,7 @@ import tempfile
 import time
 import webbrowser
 
+from datetime import datetime, timedelta
 from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTENT_TYPE, GooglePhotosException
@@ -119,13 +120,11 @@ def OAuth2Login(client_secrets, credential_store, email):
         credentials = flow.step2_exchange(code)
         storage.put(credentials)
 
-    token = gdata.gauth.OAuth2Token(client_id=credentials.client_id,
-                                    client_secret=credentials.client_secret,
-                                    scope=scope,
-                                    access_token=credentials.access_token,
-                                    refresh_token=credentials.refresh_token,
-                                    user_agent=user_agent)
-    
+    if (credentials.token_expiry - datetime.utcnow()) < timedelta(minutes=5):
+        http = httplib2.Http()
+        http = credentials.authorize(http)
+        credentials.refresh(http)
+
     gd_client = gdata.photos.service.PhotosService(source=user_agent,
                                                    email=email,
                                                    additional_headers={'Authorization' : 'Bearer %s' % credentials.access_token})
@@ -135,14 +134,11 @@ def OAuth2Login(client_secrets, credential_store, email):
 def protectWebAlbums(gd_client):
     albums = gd_client.GetUserFeed()
     for album in albums.entry:
-        # print 'title: %s, number of photos: %s, id: %s summary: %s access: %s\n' % (album.title.text,
-        #  album.numphotos.text, album.gphoto_id.text, album.summary.text, album.access.text)
+        #print 'title: %s, number of photos: %s, id: %s summary: %s access: %s\n' % (album.title.text,
+        # album.numphotos.text, album.gphoto_id.text, album.summary.text, album.access.text)
         needUpdate = False
-        if album.summary.text == 'test album':
-            album.summary.text = ''
-            needUpdate = True
-        if album.access.text != 'private':
-            album.access.text = 'private'
+        if album.access.text != 'protected' and album.title.text not in ['Auto Backup', 'Profile Photos', 'Scrapbook Photos']:
+            album.access.text = 'protected'
             needUpdate = True
         # print album
         if needUpdate:
@@ -177,7 +173,7 @@ def findAlbum(gd_client, title):
 def createAlbum(gd_client, title):
     print "Creating album " + title
     # public, private, protected. private == "anyone with link"
-    album = gd_client.InsertAlbum(title=title, summary='', access='private')
+    album = gd_client.InsertAlbum(title=title, summary='', access='protected')
     return album
 
 def findOrCreateAlbum(gd_client, title):
@@ -470,7 +466,7 @@ if __name__ == '__main__':
     credential_store = os.path.join(configdir, 'credentials.dat')
 
     gd_client = OAuth2Login(client_secrets, credential_store, email)
-    # protectWebAlbums(gd_client)
+    #protectWebAlbums(gd_client)
     webAlbums = getWebAlbums(gd_client)
     localAlbums = toBaseName(findMedia(args.source))
     albumDiff = compareLocalToWeb(localAlbums, webAlbums)
