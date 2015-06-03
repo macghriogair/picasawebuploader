@@ -1,25 +1,13 @@
 picasawebuploader
 =================
 
-A script that uploads photos to Google+ / Picasa Web Albums
+A script that uploads photos to Google Photos / Google+ / Picasa Web Albums
 
 + Resizes large images to be less than the free limit (2048 x 2048)
 + Uploads all directories under a given directory
 + restartable
-+ Creates the albums as "private" aka "limited"
++ Creates the albums as "protected"
 + Automatically retries when Google data service errors out.
-
-Attention: This script is obsolete for Windows and Mac
-------------------------------------------------------
-
-It looks like Google Picasa for Windows and Mac now comes with a back up tool
-that performs the same functionality as this script. If you are using a Windows
-or Macintosh system, you probably should look into using the official Google
-tool instead. See [Picasa](http://picasa.google.com/).
-
-For more details, read this unofficial blog post describing the
-[Google+ Auto Backup for Desktop](http://googlesystem.blogspot.com/2013/12/google-auto-backup-for-desktop.html) tool.
-
 
 To Do
 -----
@@ -41,6 +29,19 @@ Installation
 	+ PIL is available on most UNIX like systems.
     + "sips" comes pre-installed on OSX.
   + pyexiv2 module for writing correct EXIF data
+
+Authentication
+--------------
+
+You need to use OAuth2 for authentication. Here is how to set it up:
+
+1. First create a project through the Google Developer Console: at https://console.developers.google.com/
+2. Under that project, create a new Client ID of type "Installed Application" under APIs & auth -> Credentials
+3. Once the Client ID has been created you should click "Download JSON" and save the file as $HOME/.config/picasawebuploader/client_secrets.json (you can change the location in main.py)
+
+The first time you run the application you will be asked to authorize your application through your web browser. Once you do this you will get a code which you have to copy and paste into the application.
+
+You're done.
 
 Known Problems
 --------------
