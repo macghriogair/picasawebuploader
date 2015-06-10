@@ -3,9 +3,8 @@ picasawebuploader
 
 A script that uploads photos to Google Photos / Google+ / Picasa Web Albums
 
-+ Resizes large images to be less than the free limit (2048 x 2048)
 + Uploads all directories under a given directory
-+ restartable
++ Restartable
 + Creates the albums as "protected"
 + Automatically retries when Google data service errors out.
 
@@ -13,9 +12,6 @@ To Do
 -----
 
 + Use multiple threads for uploading.
-+ Add Progress UI
-+ Deal with duplicate picture and folder names, both on local and web collections.
-  + Currently we just throw an exception when we detect duplicate names.
 + Deal with 'Error: 17 REJECTED_USER_LIMIT' errors.
 
 Installation
@@ -24,11 +20,6 @@ Installation
 + Prerequisites:
   + Python 2.7
   + Google Data APIs http://code.google.com/apis/gdata/
-    + gdata-2.0.16 for Python
-  + The PIL library for Python or BSD "sips" image processing program.
-	+ PIL is available on most UNIX like systems.
-    + "sips" comes pre-installed on OSX.
-  + pyexiv2 module for writing correct EXIF data
 
 Authentication
 --------------
