@@ -40,6 +40,8 @@ from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTENT_TYPE, GooglePhotosException
 
+from classes.TokenRefreshingClient import TokenRefreshingClient
+
 PICASA_MAX_VIDEO_SIZE_BYTES = 104857600
 
 class VideoEntry(gdata.photos.PhotoEntry):
@@ -98,6 +100,15 @@ def InsertVideo(self, album_or_uri, video, filename_or_handle, content_type='ima
 
 gdata.photos.service.PhotosService.InsertVideo = InsertVideo
 
+def isTokenExpired(credentials):
+    return (credentials.token_expiry - datetime.utcnow()) < timedelta(minutes=5)
+
+def refreshToken(credentials):
+    print("Refreshing token ..")
+    http = httplib2.Http()
+    http = credentials.authorize(http)
+    credentials.refresh(http)
+
 def OAuth2Login(client_secrets, credential_store, email):
     scope='https://picasaweb.google.com/data/'
     user_agent='picasawebuploader'
@@ -111,10 +122,10 @@ def OAuth2Login(client_secrets, credential_store, email):
         code = raw_input('Enter the authentication code: ').strip()
         credentials = flow.step2_exchange(code)
 
-    if (credentials.token_expiry - datetime.utcnow()) < timedelta(minutes=5):
-        http = httplib2.Http()
-        http = credentials.authorize(http)
-        credentials.refresh(http)
+    print(credentials.token_expiry)
+
+    if isTokenExpired(credentials):
+        refreshToken(credentials)
 
     storage.put(credentials)
 
@@ -169,13 +180,23 @@ def createAlbum(gd_client, title):
     album = gd_client.InsertAlbum(title=title, summary='', access='protected')
     return album
 
+def findDefaultAlbum(gd_client):
+    album = findAlbum(gd_client, 'Auto Backup')
+    if not album:
+        raise Exception("Default Album not found!")
+
+    return album
+
 def findOrCreateAlbum(gd_client, title):
+    title = 'Auto Backup'
     delay = 1
     while True:
         try:
             album = findAlbum(gd_client, title)
             if not album:
+                # insert album is not supported anymore
                 album = createAlbum(gd_client, title)
+
             return album
         except gdata.photos.service.GooglePhotosException as e:
             print("caught exception " + str(e))
@@ -195,6 +216,7 @@ def postPhotoToAlbum(gd_client, photo, album):
     return photo
 
 def getWebPhotosForAlbum(gd_client, album):
+    album = 'Auto Backup'
     photos = gd_client.GetFeed(
             '/data/feed/api/user/%s/albumid/%s?kind=photo' % (
             gd_client.email, album.gphoto_id.text))
@@ -300,13 +322,18 @@ def compareLocalToWebDir(localAlbum, webPhotoDict):
     return {'localOnly' : localOnly, 'both' : both, 'webOnly' : webOnly}
 
 def syncDirs(gd_client, dirs, local, web):
+    # todo, needs rework
+    print(str(dirs))
     for dir in dirs:
         syncDir(gd_client, dir, local[dir], web[dir])
 
 def syncDir(gd_client, dir, localAlbum, webAlbum):
+    print("Sync dir: album is " + webAlbum)
+
     webPhotos = getWebPhotosForAlbum(gd_client, webAlbum)
     webPhotoDict = {}
     for photo in webPhotos:
+        print(photo.title.text)
         title = photo.title.text
         if title in webPhotoDict:
             print("duplicate web photo: " + webAlbum.title.text + " " + title)
@@ -320,10 +347,12 @@ def syncDir(gd_client, dir, localAlbum, webAlbum):
 
 def uploadDirs(gd_client, dirs, local):
     for dir in dirs:
+    # for key, value in local.__dict__.iteritems():
         uploadDir(gd_client, dir, local[dir])
 
 def uploadDir(gd_client, dir, localAlbum):
-    webAlbum = findOrCreateAlbum(gd_client, dir)
+    #webAlbum = findOrCreateAlbum(gd_client, dir)
+    webAlbum = findDefaultAlbum(gd_client)
     for f in localAlbum['files']:
         localPath = os.path.join(localAlbum['path'], f)
         upload(gd_client, localPath, webAlbum, f)
@@ -384,10 +413,17 @@ if __name__ == '__main__':
     client_secrets = os.path.join(configdir, 'client_secrets.json')
     credential_store = os.path.join(configdir, 'credentials.dat')
 
-    gd_client = OAuth2Login(client_secrets, credential_store, email)
+    #gd_client = OAuth2Login(client_secrets, credential_store, email)
+    gd_client = TokenRefreshingClient(client_secrets, credential_store, email)
+
     #protectWebAlbums(gd_client)
     webAlbums = getWebAlbums(gd_client)
     localAlbums = toBaseName(findMedia(args.source))
+    # print(str(localAlbums))
     albumDiff = compareLocalToWeb(localAlbums, webAlbums)
+    # print(str(albumDiff))
+
     syncDirs(gd_client, albumDiff['both'], localAlbums, webAlbums)
     uploadDirs(gd_client, albumDiff['localOnly'], localAlbums)
+    # uploadDirs(gd_client, localAlbums)
+
