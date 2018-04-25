@@ -3,7 +3,7 @@
 # @Author: Patrick Mac Gregor
 # @Date:   2018-04-22
 # @Last Modified by:   Patrick Mac Gregor
-# @Last Modified time: 2018-04-22
+# @Last Modified time: 2018-04-25
 
 import gdata.photos.service
 import httplib2
@@ -66,6 +66,12 @@ class TokenRefreshingClient:
             self.refreshToken()
 
         return self.originalClient.InsertPhoto(*args, **kwargs)
+
+    def InsertVideo(self, *args, **kwargs):
+        if (self.isTokenExpired()):
+            self.refreshToken()
+
+        return self.originalClient.InsertVideo(*args, **kwargs)
 
     def GetUserFeed(self, *args):
         return self.originalClient.GetUserFeed(*args)
