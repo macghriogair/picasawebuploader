@@ -195,9 +195,10 @@ def upload(gd_client, localPath, album, fileName):
             return
         isImage = False
         mediaItem = VideoEntry()
-        mediaItem.title = atom.Title(text=fileName)
-        mediaItem.summary = atom.Summary(text='', summary_type='text')
-        delay = 1
+
+    mediaItem.title = atom.Title(text=fileName)
+    mediaItem.summary = atom.Summary(text='', summary_type='text')
+    delay = 1
     while True:
         try:
             if isImage:
