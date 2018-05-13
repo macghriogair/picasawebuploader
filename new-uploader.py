@@ -13,6 +13,7 @@ import gdata.photos.service
 import atom
 import atom.service
 import time
+import datetime
 from gdata.photos.service import GPHOTOS_INVALID_ARGUMENT, GPHOTOS_INVALID_CONTENT_TYPE, GooglePhotosException
 
 
@@ -225,6 +226,9 @@ def main():
     args = parser.parse_args()
     email = args.email
 
+    start = datetime.datetime.now().replace(microsecond=0)
+    print("Started at: %s" % start)
+
     configdir = os.path.expanduser('~/.config/picasawebuploader')
     client_secrets = os.path.join(configdir, 'client_secrets.json')
     credential_store = os.path.join(configdir, 'credentials.dat')
@@ -233,6 +237,9 @@ def main():
 
     localAlbums = findMedia(args.source)
     uploadDirs(gd_client, localAlbums)
+    stop = datetime.datetime.now().replace(microsecond=0)
+    print("Finished at: %s" % stop)
+    print("Duration: %s" % (stop - start))
 
 
 if __name__ == '__main__':
