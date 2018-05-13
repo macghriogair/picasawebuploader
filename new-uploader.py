@@ -3,7 +3,7 @@
 # @Author: Patrick Mac Gregor
 # @Date:   2018-05-12
 # @Last Modified by:   Patrick Mac Gregor
-# @Last Modified time: 2018-05-12
+# @Last Modified time: 2018-05-13
 
 import os
 import argparse
@@ -186,6 +186,8 @@ def upload(gd_client, localPath, album, fileName):
         isImage = True
         mediaItem = gdata.photos.PhotoEntry()
     else:
+        print("Skipping Video: " + localPath)
+        return
         size = os.path.getsize(localPath)
 
         # tested by cpbotha on 2013-05-24
