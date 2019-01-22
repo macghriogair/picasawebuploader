@@ -1,5 +1,8 @@
-picasawebuploader
+[DEPRECATED] picasawebuploader
 =================
+
+*Important* as of Jan. 2019 the Google Picase Web API has been deprecated. cf. https://developers.google.com/picasa-web/
+API Requests using this script will fail.
 
 A script that uploads photos to Google Photos / Google+ / Picasa Web Albums
 
